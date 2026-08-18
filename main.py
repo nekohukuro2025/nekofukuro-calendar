@@ -1,9 +1,10 @@
 from pyscript import document, window, when
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 from io import BytesIO
+from zipfile import ZipFile, ZIP_DEFLATED
 import base64, calendar
 
-W, H = 1200, 1600
+W, H = 1200, 1720
 PHOTO_W = W - 100
 PHOTO_H = 900
 PHOTO_X = 50
@@ -19,6 +20,9 @@ def get_font(size, bold=False):
 FONT_TITLE = get_font(58, True)
 FONT_WEEK = get_font(34, True)
 FONT_DAY = get_font(36)
+
+# PC一括ダウンロード用：直近に生成した12か月分のJPEG bytes
+GENERATED_JPEGS = {}
 
 async def js_file_to_image(file_obj):
     data_url = str(await window.readFileDataURL(file_obj))
@@ -108,10 +112,13 @@ def make_calendar(img, year, month, x_adj=0, y_adj=0, zoom=100, logo=None):
             )
 
     if logo:
-        lw = 180
+        # 日付領域から離して、最下部中央に小さく配置
+        lw = 78
         lh = int(logo.height * lw / logo.width)
         lg = logo.resize((lw, lh), Image.Resampling.LANCZOS)
-        canvas.alpha_composite(lg, (W-lw-34, H-lh-20))
+        logo_x = (W - lw) // 2
+        logo_y = H - lh - 22
+        canvas.alpha_composite(lg, (logo_x, logo_y))
 
     return canvas.convert("RGB")
 
@@ -132,6 +139,20 @@ def image_to_data_url(img):
     buf.close()
     return "data:image/jpeg;base64," + b64
 
+
+def image_to_jpeg_bytes(img):
+    buf = BytesIO()
+    img.save(buf, "JPEG", quality=90, optimize=True)
+    data = buf.getvalue()
+    buf.close()
+    return data
+
+def pybytes_to_uint8(raw):
+    arr = window.Uint8Array.new(len(raw))
+    for i, b in enumerate(raw):
+        arr[i] = b
+    return arr
+
 def add_result_card(month, data_url):
     results = document.getElementById("results")
 
@@ -147,16 +168,8 @@ def add_result_card(month, data_url):
     title.className = "result-title"
     title.innerText = f"{month}月"
 
-    link = document.createElement("a")
-    link.className = "result-link"
-    link.href = data_url
-    link.target = "_blank"
-    link.rel = "noopener"
-    link.innerText = "画像だけ開く"
-
     card.appendChild(img)
     card.appendChild(title)
-    card.appendChild(link)
     results.appendChild(card)
 
 @when("click", "#make_btn")
@@ -179,6 +192,9 @@ async def make_all(event):
     progress.value = 0
     document.getElementById("results").innerHTML = ""
     document.getElementById("results_panel").classList.add("hidden")
+    document.getElementById("desktop_download_btn").classList.add("hidden")
+
+    GENERATED_JPEGS.clear()
 
     logo = await load_logo()
 
@@ -201,7 +217,9 @@ async def make_all(event):
                 logo=logo
             )
 
-            data_url = image_to_data_url(result)
+            jpeg_bytes = image_to_jpeg_bytes(result)
+            GENERATED_JPEGS[month] = jpeg_bytes
+            data_url = "data:image/jpeg;base64," + base64.b64encode(jpeg_bytes).decode("ascii")
             add_result_card(month, data_url)
 
             del result, photo
@@ -210,6 +228,10 @@ async def make_all(event):
 
         status.innerText = "12か月分が完成しました。下の画像を保存してください。"
         document.getElementById("results_panel").classList.remove("hidden")
+
+        if window.isDesktopLike():
+            document.getElementById("desktop_download_btn").classList.remove("hidden")
+
         document.getElementById("results_panel").scrollIntoView({"behavior":"smooth"})
 
     except Exception as e:
@@ -217,3 +239,33 @@ async def make_all(event):
         raise
     finally:
         btn.disabled = False
+
+
+@when("pydownload", "#desktop_download_btn")
+async def download_all_pc(event):
+    status = document.getElementById("status")
+
+    if len(GENERATED_JPEGS) != 12:
+        status.innerText = "12か月分の画像がまだ完成していません。"
+        return
+
+    year = int(document.getElementById("year").value)
+    status.innerText = "12か月分をZIPにまとめています…"
+
+    zbuf = BytesIO()
+    with ZipFile(zbuf, "w", ZIP_DEFLATED) as zf:
+        for month in range(1, 13):
+            zf.writestr(
+                f"nekofukuro_calendar_{year}_{month:02d}.jpg",
+                GENERATED_JPEGS[month]
+            )
+
+    raw = zbuf.getvalue()
+    zbuf.close()
+
+    window.downloadBytes(
+        f"nekofukuro_calendar_{year}.zip",
+        pybytes_to_uint8(raw),
+        "application/zip"
+    )
+    status.innerText = "12か月分のZIPをダウンロードしました。"

@@ -110,17 +110,21 @@ progress { width:100%; display:none; margin-top:10px; }
 }
 .result-card img { width:100%; height:auto; display:block; border-radius:8px; }
 .result-title { font-size:13px; font-weight:700; margin:7px 0 5px; }
-.result-link {
-  display:flex; justify-content:center; align-items:center;
-  min-height:40px; border-radius:9px; background:var(--soft);
-  color:var(--ink); text-decoration:none; font-size:13px; font-weight:700;
-}
+
 .hidden { display:none !important; }
 
 @media(max-width:520px) {
   .grid { grid-template-columns:repeat(2,1fr); }
   .result-grid { grid-template-columns:1fr; }
 }
+
+.desktop-download {
+  width:100%; margin-top:14px; min-height:48px;
+  border:0; border-radius:10px; background:#47413b; color:#fff;
+  font-size:15px; font-weight:700;
+}
+.desktop-download.hidden { display:none !important; }
+
 </style>
 
 <script>
@@ -143,6 +147,25 @@ window.readFileDataURL = (file) => new Promise((resolve, reject) => {
 });
 
 window.pauseFrame = () => new Promise(resolve => setTimeout(resolve, 0));
+
+window.isDesktopLike = () => {
+  const ua = navigator.userAgent || "";
+  const isMobileUA = /iPhone|iPad|iPod|Android/i.test(ua);
+  return !isMobileUA;
+};
+
+window.downloadBytes = (filename, byteArray, mime) => {
+  const blob = new Blob([byteArray], {type:mime});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 3000);
+};
+
 
 function previewMonthCard(monthIndex, file) {
   const box = document.getElementById(`thumb_${String(monthIndex+1).padStart(2,"0")}`);
@@ -237,6 +260,13 @@ function clearResults() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  const desktopBtn = document.getElementById("desktop_download_btn");
+  if (desktopBtn && window.isDesktopLike()) {
+    desktopBtn.addEventListener("click", () => {
+      // PyScript側イベントを発火
+      desktopBtn.dispatchEvent(new CustomEvent("pydownload"));
+    });
+  }
   document.getElementById("bulk").addEventListener("change", e => {
     clearResults();
     setBulk(e.target.files);
@@ -446,9 +476,12 @@ document.addEventListener("DOMContentLoaded", () => {
   <section class="panel hidden" id="results_panel">
     <h2>完成したカレンダー</h2>
     <div class="note">
-      iPhoneでは画像を長押しして「写真に保存」が使えます。「画像だけ開く」から1枚を大きく表示することもできます。
+      スマホでは完成画像を長押しして「写真に保存」できます。PCでは下の「12か月まとめてダウンロード」からZIPで一括保存できます。
     </div>
     <div id="results" class="result-grid"></div>
+    <button id="desktop_download_btn" class="desktop-download hidden">
+      12か月まとめてダウンロード（ZIP）
+    </button>
   </section>
 </div>
 
