@@ -21,7 +21,7 @@ body {
 }
 .wrap { max-width:820px; margin:auto; padding:14px 10px 54px; }
 .hero { text-align:center; padding:14px 8px 12px; }
-.brand img { width:92px; height:92px; object-fit:contain; }
+.brand img { width:104px; height:104px; object-fit:contain; display:block; margin:0 auto; }
 h1 { font-size:21px; margin:10px 0 5px; }
 h2 { font-size:18px; margin:0 0 10px; }
 .lead { font-size:14px; color:var(--sub); line-height:1.6; margin:0; }
@@ -128,9 +128,9 @@ window.selectedPhotos = new Array(12).fill(null);
 
 // Each month keeps its own adjustment state.
 window.photoAdjustments = Array.from({length:12}, () => ({
-  x: 0,      // -100 .. +100
-  y: 0,      // -100 .. +100
-  zoom: 100  // 100 .. 200
+  x: 0,      // -200 .. +200
+  y: 0,      // -200 .. +200
+  zoom: 100  // 50 .. 200
 }));
 
 window.activeMonth = 0;
@@ -206,9 +206,12 @@ function updateEditorPreview() {
   preview.style.backgroundImage = `url("${url}")`;
 
   // Approximate browser preview. Final image uses the same x/y/zoom values in Pillow.
-  const px = 50 + (adj.x * 0.35);
-  const py = 50 + (adj.y * 0.35);
+  // 調整幅を広く取り、縮小にも対応する簡易プレビュー
+  const px = 50 + (adj.x * 0.45);
+  const py = 50 + (adj.y * 0.45);
   preview.style.backgroundPosition = `${px}% ${py}%`;
+  preview.style.backgroundRepeat = "no-repeat";
+  preview.style.backgroundColor = "#f5f3ef";
   preview.style.backgroundSize = `${adj.zoom}% auto`;
 }
 
@@ -412,22 +415,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
     <div class="control">
       <div class="control-top"><span>左右</span><strong id="x_val">0</strong></div>
-      <input type="range" id="x_slider" min="-100" max="100" step="1" value="0">
+      <input type="range" id="x_slider" min="-200" max="200" step="1" value="0">
     </div>
 
     <div class="control">
       <div class="control-top"><span>上下</span><strong id="y_val">0</strong></div>
-      <input type="range" id="y_slider" min="-100" max="100" step="1" value="0">
+      <input type="range" id="y_slider" min="-200" max="200" step="1" value="0">
     </div>
 
     <div class="control">
-      <div class="control-top"><span>拡大</span><strong id="zoom_val">100%</strong></div>
-      <input type="range" id="zoom_slider" min="100" max="200" step="1" value="100">
+      <div class="control-top"><span>拡大・縮小</span><strong id="zoom_val">100%</strong></div>
+      <input type="range" id="zoom_slider" min="50" max="200" step="1" value="100">
     </div>
 
     <button type="button" onclick="resetCurrentAdjustment()" style="width:100%;">この月の位置を初期化</button>
     <div class="editor-note">
-      プレビューは目安です。生成画像では同じ左右・上下・拡大設定を使って写真を切り抜きます。
+      プレビューは目安です。生成画像では同じ左右・上下・拡大縮小設定を反映します。縮小時や大きく移動した場合は余白が見えることがあります。
     </div>
   </section>
 

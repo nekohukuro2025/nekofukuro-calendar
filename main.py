@@ -28,32 +28,37 @@ async def js_file_to_image(file_obj):
 
 def crop_with_adjustment(img, target_w, target_h, x_adj=0, y_adj=0, zoom=100):
     """
-    x_adj/y_adj: -100..100
-    zoom: 100..200
+    写真をフレームへ配置する。
+    x_adj / y_adj : -200..200（0が中央）
+    zoom          : 50..200（100が従来の「全面を埋める」基準）
+
+    50〜99%では写真全体をより多く見せられる代わりに余白が出る場合がある。
+    大きく上下左右へ動かした場合も同様。
     """
     iw, ih = img.size
 
-    base_scale = max(target_w / iw, target_h / ih)
-    scale = base_scale * (zoom / 100.0)
+    # 100% = フレームを完全に埋める cover 基準
+    cover_scale = max(target_w / iw, target_h / ih)
+    scale = cover_scale * (zoom / 100.0)
 
-    nw = max(target_w, int(round(iw * scale)))
-    nh = max(target_h, int(round(ih * scale)))
-    resized = img.resize((nw, nh), Image.Resampling.LANCZOS)
+    nw = max(1, int(round(iw * scale)))
+    nh = max(1, int(round(ih * scale)))
+    resized = img.resize((nw, nh), Image.Resampling.LANCZOS).convert("RGBA")
 
-    max_left = max(0, nw - target_w)
-    max_top = max(0, nh - target_h)
+    # フレーム本体。縮小・大移動時に出る余白はカレンダー背景色に合わせる。
+    frame = Image.new("RGBA", (target_w, target_h), (250, 248, 244, 255))
 
-    # 0 = center. -100/+100 moves to either crop limit.
-    center_left = max_left / 2
-    center_top = max_top / 2
+    # 中央配置を基準に、-200..200 をフレーム半分相当まで移動可能にする。
+    base_x = (target_w - nw) / 2
+    base_y = (target_h - nh) / 2
+    shift_x = (x_adj / 200.0) * (target_w * 0.50)
+    shift_y = (y_adj / 200.0) * (target_h * 0.50)
 
-    left = center_left + (x_adj / 100.0) * (max_left / 2)
-    top = center_top + (y_adj / 100.0) * (max_top / 2)
+    paste_x = int(round(base_x + shift_x))
+    paste_y = int(round(base_y + shift_y))
 
-    left = int(round(max(0, min(max_left, left))))
-    top = int(round(max(0, min(max_top, top))))
-
-    return resized.crop((left, top, left + target_w, top + target_h))
+    frame.alpha_composite(resized, (paste_x, paste_y))
+    return frame
 
 def prepare_photo(img, x_adj=0, y_adj=0, zoom=100):
     img = crop_with_adjustment(img, PHOTO_W, PHOTO_H, x_adj, y_adj, zoom)
