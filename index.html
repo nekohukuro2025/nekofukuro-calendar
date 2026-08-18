@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ねこふくろ オリジナルカレンダー（試作版 v2）</title>
+
+<link rel="stylesheet" href="https://pyscript.net/releases/2026.2.1/core.css">
+<script type="module" src="https://pyscript.net/releases/2026.2.1/core.js"></script>
+
+<style>
+:root { --bg:#f5f3ef; --card:#fff; --ink:#303030; --sub:#777; --line:#e3ded7; --accent:#47413b; }
+* { box-sizing:border-box; }
+body {
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;
+}
+.wrap { max-width:760px; margin:auto; padding:14px 10px 44px; }
+.hero { text-align:center; padding:18px 8px 12px; }
+.brand img { width:145px; max-height:45px; object-fit:contain; }
+h1 { font-size:21px; margin:10px 0 5px; }
+.lead { font-size:14px; color:var(--sub); line-height:1.6; margin:0; }
+.panel {
+  background:var(--card); border:1px solid var(--line); border-radius:15px;
+  padding:15px; margin-top:12px;
+}
+.row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+select, button, .filelike {
+  min-height:44px; border:1px solid #cec7bf; border-radius:10px; background:#fff; font-size:16px;
+}
+select { padding:8px 11px; }
+.filelike, button {
+  display:flex; align-items:center; justify-content:center; padding:10px 13px; font-weight:700;
+}
+.filelike input { display:none; }
+.grid { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; margin-top:12px; }
+.month { overflow:hidden; background:#fff; border:1px solid var(--line); border-radius:12px; }
+.month-head { padding:7px 8px; font-size:13px; font-weight:700; }
+.thumb {
+  aspect-ratio:4/3; background:#eee center/cover no-repeat;
+  display:flex; align-items:center; justify-content:center; color:#999; font-size:12px;
+}
+.replace {
+  display:flex; position:relative; align-items:center; justify-content:center;
+  min-height:35px; background:#fafafa; border-top:1px solid var(--line);
+  font-size:12px; font-weight:600;
+}
+.replace input { position:absolute; inset:0; opacity:0; width:100%; height:100%; }
+.primary { width:100%; margin-top:12px; min-height:50px; border:0; color:#fff; background:var(--accent); }
+.primary:disabled { opacity:.42; }
+.status { margin-top:10px; padding:10px 11px; background:#f7f7f7; border-radius:9px; font-size:13px; line-height:1.55; }
+progress { width:100%; display:none; margin-top:10px; }
+.note { font-size:12px; color:var(--sub); line-height:1.65; margin-top:10px; }
+@media(max-width:520px){ .grid{grid-template-columns:repeat(2,1fr);} }
+</style>
+
+<script>
+  // iPhone/Safari対策:
+  // FileListを別のinputへ再代入せず、この配列に直接保持する。
+  window.selectedPhotos = new Array(12).fill(null);
+
+  window.readFileDataURL = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+  window.pauseFrame = () => new Promise(resolve => setTimeout(resolve, 0));
+
+  window.downloadBytes = (filename, byteArray, mime) => {
+    const blob = new Blob([byteArray], {type:mime});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 3000);
+  };
+
+  function preview(monthIndex, file) {
+    const box = document.getElementById(`thumb_${String(monthIndex+1).padStart(2,"0")}`);
+    if (!file) {
+      box.style.backgroundImage = "";
+      box.textContent = "未選択";
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    box.textContent = "";
+    box.style.backgroundImage = `url("${url}")`;
+  }
+
+  function refreshState() {
+    const n = window.selectedPhotos.filter(Boolean).length;
+    document.getElementById("count").textContent = `${n} / 12 枚`;
+    document.getElementById("make_btn").disabled = (n !== 12);
+    document.getElementById("status").textContent =
+      n === 12 ? "12枚そろいました。カレンダーを作成できます。" :
+                 `${n}枚選択済みです。あと${12-n}枚選んでください。`;
+  }
+
+  function setBulk(files) {
+    const list = Array.from(files).slice(0,12);
+    // いったん全月をクリア
+    window.selectedPhotos.fill(null);
+    for (let i=0; i<12; i++) preview(i, null);
+
+    list.forEach((file, i) => {
+      window.selectedPhotos[i] = file;
+      preview(i, file);
+    });
+    refreshState();
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("bulk").addEventListener("change", e => {
+      setBulk(e.target.files);
+    });
+
+    for (let m=1; m<=12; m++) {
+      const input = document.getElementById(`replace_${String(m).padStart(2,"0")}`);
+      input.addEventListener("change", e => {
+        const file = e.target.files && e.target.files[0];
+        if (file) {
+          window.selectedPhotos[m-1] = file;
+          preview(m-1, file);
+          refreshState();
+        }
+      });
+    }
+  });
+</script>
+</head>
+
+<body>
+<div class="wrap">
+  <div class="hero">
+    <div class="brand"><img src="./logo.png" alt="ねこふくろ"></div>
+    <h1>オリジナルカレンダーをつくる</h1>
+    <p class="lead">写真12枚から、1年分のカレンダーをまとめて作成します。</p>
+  </div>
+
+  <section class="panel">
+    <div class="row">
+      <label for="year"><strong>年</strong></label>
+      <select id="year">
+        <option>2026</option><option selected>2027</option><option>2028</option><option>2029</option>
+      </select>
+      <strong id="count" style="margin-left:auto">0 / 12 枚</strong>
+    </div>
+
+    <label class="filelike" style="width:100%;margin-top:12px;background:#fafafa;">
+      写真を12枚まとめて選ぶ
+      <input id="bulk" type="file" accept="image/*" multiple>
+    </label>
+    <div class="note">選択された順番に1月〜12月へ割り当てます。各月の「差し替え」から個別変更できます。</div>
+  </section>
+
+  <section class="grid">
+
+    <div class="month">
+      <div class="month-head">1月</div>
+      <div class="thumb" id="thumb_01">未選択</div>
+      <label class="replace">差し替え<input id="replace_01" type="file" accept="image/*"></label>
+    </div>
+
+    <div class="month">
+      <div class="month-head">2月</div>
+      <div class="thumb" id="thumb_02">未選択</div>
+      <label class="replace">差し替え<input id="replace_02" type="file" accept="image/*"></label>
+    </div>
+
+    <div class="month">
+      <div class="month-head">3月</div>
+      <div class="thumb" id="thumb_03">未選択</div>
+      <label class="replace">差し替え<input id="replace_03" type="file" accept="image/*"></label>
+    </div>
+
+    <div class="month">
+      <div class="month-head">4月</div>
+      <div class="thumb" id="thumb_04">未選択</div>
+      <label class="replace">差し替え<input id="replace_04" type="file" accept="image/*"></label>
+    </div>
+
+    <div class="month">
+      <div class="month-head">5月</div>
+      <div class="thumb" id="thumb_05">未選択</div>
+      <label class="replace">差し替え<input id="replace_05" type="file" accept="image/*"></label>
+    </div>
+
+    <div class="month">
+      <div class="month-head">6月</div>
+      <div class="thumb" id="thumb_06">未選択</div>
+      <label class="replace">差し替え<input id="replace_06" type="file" accept="image/*"></label>
+    </div>
+
+    <div class="month">
+      <div class="month-head">7月</div>
+      <div class="thumb" id="thumb_07">未選択</div>
+      <label class="replace">差し替え<input id="replace_07" type="file" accept="image/*"></label>
+    </div>
+
+    <div class="month">
+      <div class="month-head">8月</div>
+      <div class="thumb" id="thumb_08">未選択</div>
+      <label class="replace">差し替え<input id="replace_08" type="file" accept="image/*"></label>
+    </div>
+
+    <div class="month">
+      <div class="month-head">9月</div>
+      <div class="thumb" id="thumb_09">未選択</div>
+      <label class="replace">差し替え<input id="replace_09" type="file" accept="image/*"></label>
+    </div>
+
+    <div class="month">
+      <div class="month-head">10月</div>
+      <div class="thumb" id="thumb_10">未選択</div>
+      <label class="replace">差し替え<input id="replace_10" type="file" accept="image/*"></label>
+    </div>
+
+    <div class="month">
+      <div class="month-head">11月</div>
+      <div class="thumb" id="thumb_11">未選択</div>
+      <label class="replace">差し替え<input id="replace_11" type="file" accept="image/*"></label>
+    </div>
+
+    <div class="month">
+      <div class="month-head">12月</div>
+      <div class="thumb" id="thumb_12">未選択</div>
+      <label class="replace">差し替え<input id="replace_12" type="file" accept="image/*"></label>
+    </div>
+
+  </section>
+
+  <section class="panel">
+    <button id="make_btn" class="primary" disabled>12か月分を作成してZIP保存</button>
+    <progress id="progress" max="12" value="0"></progress>
+    <div id="status" class="status">写真を選択してください。</div>
+    <div class="note">試作版：画像加工はブラウザ内で行います。写真を外部へ送信する処理は実装していません。</div>
+  </section>
+</div>
+
+<script type="py" src="./main.py" config="./pyscript.json"></script>
+</body>
+</html>
