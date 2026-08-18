@@ -3,134 +3,270 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ねこふくろ オリジナルカレンダー（試作版 v2）</title>
+<title>ねこふくろ オリジナルカレンダー（試作版 v3）</title>
 
 <link rel="stylesheet" href="https://pyscript.net/releases/2026.2.1/core.css">
 <script type="module" src="https://pyscript.net/releases/2026.2.1/core.js"></script>
 
 <style>
-:root { --bg:#f5f3ef; --card:#fff; --ink:#303030; --sub:#777; --line:#e3ded7; --accent:#47413b; }
+:root {
+  --bg:#f5f3ef; --card:#fff; --ink:#303030; --sub:#777;
+  --line:#e3ded7; --accent:#47413b; --soft:#f7f4f0;
+}
 * { box-sizing:border-box; }
 body {
   margin:0; background:var(--bg); color:var(--ink);
-  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN",
+              "Yu Gothic",Meiryo,sans-serif;
 }
-.wrap { max-width:760px; margin:auto; padding:14px 10px 44px; }
-.hero { text-align:center; padding:18px 8px 12px; }
-.brand img { width:145px; max-height:45px; object-fit:contain; }
+.wrap { max-width:820px; margin:auto; padding:14px 10px 54px; }
+.hero { text-align:center; padding:14px 8px 12px; }
+.brand img { width:92px; height:92px; object-fit:contain; }
 h1 { font-size:21px; margin:10px 0 5px; }
+h2 { font-size:18px; margin:0 0 10px; }
 .lead { font-size:14px; color:var(--sub); line-height:1.6; margin:0; }
+
 .panel {
   background:var(--card); border:1px solid var(--line); border-radius:15px;
   padding:15px; margin-top:12px;
 }
 .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+
 select, button, .filelike {
-  min-height:44px; border:1px solid #cec7bf; border-radius:10px; background:#fff; font-size:16px;
+  min-height:44px; border:1px solid #cec7bf; border-radius:10px;
+  background:#fff; font-size:16px;
 }
 select { padding:8px 11px; }
 .filelike, button {
-  display:flex; align-items:center; justify-content:center; padding:10px 13px; font-weight:700;
+  display:flex; align-items:center; justify-content:center;
+  padding:10px 13px; font-weight:700;
 }
 .filelike input { display:none; }
-.grid { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; margin-top:12px; }
-.month { overflow:hidden; background:#fff; border:1px solid var(--line); border-radius:12px; }
-.month-head { padding:7px 8px; font-size:13px; font-weight:700; }
+
+.grid {
+  display:grid; grid-template-columns:repeat(3,1fr); gap:9px; margin-top:12px;
+}
+.month {
+  overflow:hidden; background:#fff; border:1px solid var(--line); border-radius:12px;
+}
+.month.selected { outline:3px solid #8e867c; }
+.month-head {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:7px 8px; font-size:13px; font-weight:700;
+}
 .thumb {
   aspect-ratio:4/3; background:#eee center/cover no-repeat;
   display:flex; align-items:center; justify-content:center; color:#999; font-size:12px;
 }
-.replace {
-  display:flex; position:relative; align-items:center; justify-content:center;
-  min-height:35px; background:#fafafa; border-top:1px solid var(--line);
-  font-size:12px; font-weight:600;
+.month-actions {
+  display:grid; grid-template-columns:1fr 1fr; border-top:1px solid var(--line);
 }
-.replace input { position:absolute; inset:0; opacity:0; width:100%; height:100%; }
-.primary { width:100%; margin-top:12px; min-height:50px; border:0; color:#fff; background:var(--accent); }
+.month-actions label, .month-actions button {
+  min-height:36px; border:0; border-radius:0; background:#fafafa;
+  font-size:12px; font-weight:600; position:relative; padding:6px;
+}
+.month-actions label { display:flex; align-items:center; justify-content:center; }
+.month-actions label input {
+  position:absolute; inset:0; opacity:0; width:100%; height:100%;
+}
+.month-actions button { border-left:1px solid var(--line); }
+
+.editor-preview {
+  width:100%; aspect-ratio:5/4; border-radius:13px; overflow:hidden;
+  background:#ddd center/cover no-repeat; margin-bottom:12px;
+  position:relative;
+}
+.editor-preview::after {
+  content:"写真として使われる範囲の目安";
+  position:absolute; left:8px; bottom:8px; font-size:11px;
+  background:rgba(255,255,255,.75); padding:4px 7px; border-radius:8px;
+}
+.control { margin:12px 0; }
+.control-top {
+  display:flex; justify-content:space-between; font-size:13px; margin-bottom:4px;
+}
+input[type="range"] { width:100%; }
+.editor-note { font-size:12px; color:var(--sub); line-height:1.6; }
+
+.primary {
+  width:100%; margin-top:12px; min-height:50px; border:0; color:#fff;
+  background:var(--accent);
+}
 .primary:disabled { opacity:.42; }
-.status { margin-top:10px; padding:10px 11px; background:#f7f7f7; border-radius:9px; font-size:13px; line-height:1.55; }
+
+.status {
+  margin-top:10px; padding:10px 11px; background:#f7f7f7;
+  border-radius:9px; font-size:13px; line-height:1.55;
+}
 progress { width:100%; display:none; margin-top:10px; }
 .note { font-size:12px; color:var(--sub); line-height:1.65; margin-top:10px; }
-@media(max-width:520px){ .grid{grid-template-columns:repeat(2,1fr);} }
+
+.result-grid {
+  display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-top:12px;
+}
+.result-card {
+  background:#fff; border:1px solid var(--line); border-radius:13px;
+  padding:9px; overflow:hidden;
+}
+.result-card img { width:100%; height:auto; display:block; border-radius:8px; }
+.result-title { font-size:13px; font-weight:700; margin:7px 0 5px; }
+.result-link {
+  display:flex; justify-content:center; align-items:center;
+  min-height:40px; border-radius:9px; background:var(--soft);
+  color:var(--ink); text-decoration:none; font-size:13px; font-weight:700;
+}
+.hidden { display:none !important; }
+
+@media(max-width:520px) {
+  .grid { grid-template-columns:repeat(2,1fr); }
+  .result-grid { grid-template-columns:1fr; }
+}
 </style>
 
 <script>
-  // iPhone/Safari対策:
-  // FileListを別のinputへ再代入せず、この配列に直接保持する。
-  window.selectedPhotos = new Array(12).fill(null);
+window.selectedPhotos = new Array(12).fill(null);
 
-  window.readFileDataURL = (file) => new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
+// Each month keeps its own adjustment state.
+window.photoAdjustments = Array.from({length:12}, () => ({
+  x: 0,      // -100 .. +100
+  y: 0,      // -100 .. +100
+  zoom: 100  // 100 .. 200
+}));
+
+window.activeMonth = 0;
+
+window.readFileDataURL = (file) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(reader.result);
+  reader.onerror = reject;
+  reader.readAsDataURL(file);
+});
+
+window.pauseFrame = () => new Promise(resolve => setTimeout(resolve, 0));
+
+function previewMonthCard(monthIndex, file) {
+  const box = document.getElementById(`thumb_${String(monthIndex+1).padStart(2,"0")}`);
+  if (!file) {
+    box.style.backgroundImage = "";
+    box.textContent = "未選択";
+    return;
+  }
+  const url = URL.createObjectURL(file);
+  box.textContent = "";
+  box.style.backgroundImage = `url("${url}")`;
+  box.dataset.objectUrl = url;
+}
+
+function refreshState() {
+  const n = window.selectedPhotos.filter(Boolean).length;
+  document.getElementById("count").textContent = `${n} / 12 枚`;
+  document.getElementById("make_btn").disabled = (n !== 12);
+  document.getElementById("status").textContent =
+    n === 12 ? "12枚そろいました。必要なら各月の写真位置を調整してください。" :
+               `${n}枚選択済みです。あと${12-n}枚選んでください。`;
+}
+
+function setBulk(files) {
+  const list = Array.from(files).slice(0,12);
+  window.selectedPhotos.fill(null);
+  window.photoAdjustments = Array.from({length:12}, () => ({x:0,y:0,zoom:100}));
+
+  for (let i=0;i<12;i++) previewMonthCard(i,null);
+
+  list.forEach((file,i) => {
+    window.selectedPhotos[i] = file;
+    previewMonthCard(i,file);
+  });
+  refreshState();
+  selectMonthEditor(0);
+}
+
+function updateEditorPreview() {
+  const i = window.activeMonth;
+  const file = window.selectedPhotos[i];
+  const preview = document.getElementById("editor_preview");
+  const adj = window.photoAdjustments[i];
+
+  document.getElementById("editor_month").textContent = `${i+1}月の写真位置`;
+  document.getElementById("x_val").textContent = adj.x;
+  document.getElementById("y_val").textContent = adj.y;
+  document.getElementById("zoom_val").textContent = `${adj.zoom}%`;
+
+  document.getElementById("x_slider").value = adj.x;
+  document.getElementById("y_slider").value = adj.y;
+  document.getElementById("zoom_slider").value = adj.zoom;
+
+  if (!file) {
+    preview.style.backgroundImage = "";
+    return;
+  }
+
+  const thumb = document.getElementById(`thumb_${String(i+1).padStart(2,"0")}`);
+  const url = thumb.dataset.objectUrl;
+  preview.style.backgroundImage = `url("${url}")`;
+
+  // Approximate browser preview. Final image uses the same x/y/zoom values in Pillow.
+  const px = 50 + (adj.x * 0.35);
+  const py = 50 + (adj.y * 0.35);
+  preview.style.backgroundPosition = `${px}% ${py}%`;
+  preview.style.backgroundSize = `${adj.zoom}% auto`;
+}
+
+function selectMonthEditor(i) {
+  window.activeMonth = i;
+  document.querySelectorAll(".month").forEach((el,idx) => {
+    el.classList.toggle("selected", idx===i);
+  });
+  document.getElementById("editor").classList.remove("hidden");
+  updateEditorPreview();
+  document.getElementById("editor").scrollIntoView({behavior:"smooth", block:"nearest"});
+}
+
+function resetCurrentAdjustment() {
+  window.photoAdjustments[window.activeMonth] = {x:0,y:0,zoom:100};
+  updateEditorPreview();
+}
+
+function clearResults() {
+  const r = document.getElementById("results");
+  r.innerHTML = "";
+  document.getElementById("results_panel").classList.add("hidden");
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("bulk").addEventListener("change", e => {
+    clearResults();
+    setBulk(e.target.files);
   });
 
-  window.pauseFrame = () => new Promise(resolve => setTimeout(resolve, 0));
-
-  window.downloadBytes = (filename, byteArray, mime) => {
-    const blob = new Blob([byteArray], {type:mime});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 3000);
-  };
-
-  function preview(monthIndex, file) {
-    const box = document.getElementById(`thumb_${String(monthIndex+1).padStart(2,"0")}`);
-    if (!file) {
-      box.style.backgroundImage = "";
-      box.textContent = "未選択";
-      return;
-    }
-    const url = URL.createObjectURL(file);
-    box.textContent = "";
-    box.style.backgroundImage = `url("${url}")`;
-  }
-
-  function refreshState() {
-    const n = window.selectedPhotos.filter(Boolean).length;
-    document.getElementById("count").textContent = `${n} / 12 枚`;
-    document.getElementById("make_btn").disabled = (n !== 12);
-    document.getElementById("status").textContent =
-      n === 12 ? "12枚そろいました。カレンダーを作成できます。" :
-                 `${n}枚選択済みです。あと${12-n}枚選んでください。`;
-  }
-
-  function setBulk(files) {
-    const list = Array.from(files).slice(0,12);
-    // いったん全月をクリア
-    window.selectedPhotos.fill(null);
-    for (let i=0; i<12; i++) preview(i, null);
-
-    list.forEach((file, i) => {
-      window.selectedPhotos[i] = file;
-      preview(i, file);
+  for (let m=1; m<=12; m++) {
+    const input = document.getElementById(`replace_${String(m).padStart(2,"0")}`);
+    input.addEventListener("change", e => {
+      const file = e.target.files && e.target.files[0];
+      if (file) {
+        clearResults();
+        window.selectedPhotos[m-1] = file;
+        window.photoAdjustments[m-1] = {x:0,y:0,zoom:100};
+        previewMonthCard(m-1,file);
+        refreshState();
+        selectMonthEditor(m-1);
+      }
     });
-    refreshState();
   }
 
-  document.addEventListener("DOMContentLoaded", () => {
-    document.getElementById("bulk").addEventListener("change", e => {
-      setBulk(e.target.files);
-    });
-
-    for (let m=1; m<=12; m++) {
-      const input = document.getElementById(`replace_${String(m).padStart(2,"0")}`);
-      input.addEventListener("change", e => {
-        const file = e.target.files && e.target.files[0];
-        if (file) {
-          window.selectedPhotos[m-1] = file;
-          preview(m-1, file);
-          refreshState();
-        }
-      });
-    }
+  document.getElementById("x_slider").addEventListener("input", e => {
+    window.photoAdjustments[window.activeMonth].x = Number(e.target.value);
+    updateEditorPreview();
   });
+  document.getElementById("y_slider").addEventListener("input", e => {
+    window.photoAdjustments[window.activeMonth].y = Number(e.target.value);
+    updateEditorPreview();
+  });
+  document.getElementById("zoom_slider").addEventListener("input", e => {
+    window.photoAdjustments[window.activeMonth].zoom = Number(e.target.value);
+    updateEditorPreview();
+  });
+});
 </script>
 </head>
 
@@ -155,90 +291,161 @@ progress { width:100%; display:none; margin-top:10px; }
       写真を12枚まとめて選ぶ
       <input id="bulk" type="file" accept="image/*" multiple>
     </label>
-    <div class="note">選択された順番に1月〜12月へ割り当てます。各月の「差し替え」から個別変更できます。</div>
+    <div class="note">選択順に1月〜12月へ割り当てます。あとから各月の差し替え・位置調整ができます。</div>
   </section>
 
   <section class="grid">
 
-    <div class="month">
-      <div class="month-head">1月</div>
+    <div class="month" id="month_card_01">
+      <div class="month-head"><span>1月</span></div>
       <div class="thumb" id="thumb_01">未選択</div>
-      <label class="replace">差し替え<input id="replace_01" type="file" accept="image/*"></label>
+      <div class="month-actions">
+        <label>差し替え<input id="replace_01" type="file" accept="image/*"></label>
+        <button type="button" onclick="selectMonthEditor(0)">位置調整</button>
+      </div>
     </div>
 
-    <div class="month">
-      <div class="month-head">2月</div>
+    <div class="month" id="month_card_02">
+      <div class="month-head"><span>2月</span></div>
       <div class="thumb" id="thumb_02">未選択</div>
-      <label class="replace">差し替え<input id="replace_02" type="file" accept="image/*"></label>
+      <div class="month-actions">
+        <label>差し替え<input id="replace_02" type="file" accept="image/*"></label>
+        <button type="button" onclick="selectMonthEditor(1)">位置調整</button>
+      </div>
     </div>
 
-    <div class="month">
-      <div class="month-head">3月</div>
+    <div class="month" id="month_card_03">
+      <div class="month-head"><span>3月</span></div>
       <div class="thumb" id="thumb_03">未選択</div>
-      <label class="replace">差し替え<input id="replace_03" type="file" accept="image/*"></label>
+      <div class="month-actions">
+        <label>差し替え<input id="replace_03" type="file" accept="image/*"></label>
+        <button type="button" onclick="selectMonthEditor(2)">位置調整</button>
+      </div>
     </div>
 
-    <div class="month">
-      <div class="month-head">4月</div>
+    <div class="month" id="month_card_04">
+      <div class="month-head"><span>4月</span></div>
       <div class="thumb" id="thumb_04">未選択</div>
-      <label class="replace">差し替え<input id="replace_04" type="file" accept="image/*"></label>
+      <div class="month-actions">
+        <label>差し替え<input id="replace_04" type="file" accept="image/*"></label>
+        <button type="button" onclick="selectMonthEditor(3)">位置調整</button>
+      </div>
     </div>
 
-    <div class="month">
-      <div class="month-head">5月</div>
+    <div class="month" id="month_card_05">
+      <div class="month-head"><span>5月</span></div>
       <div class="thumb" id="thumb_05">未選択</div>
-      <label class="replace">差し替え<input id="replace_05" type="file" accept="image/*"></label>
+      <div class="month-actions">
+        <label>差し替え<input id="replace_05" type="file" accept="image/*"></label>
+        <button type="button" onclick="selectMonthEditor(4)">位置調整</button>
+      </div>
     </div>
 
-    <div class="month">
-      <div class="month-head">6月</div>
+    <div class="month" id="month_card_06">
+      <div class="month-head"><span>6月</span></div>
       <div class="thumb" id="thumb_06">未選択</div>
-      <label class="replace">差し替え<input id="replace_06" type="file" accept="image/*"></label>
+      <div class="month-actions">
+        <label>差し替え<input id="replace_06" type="file" accept="image/*"></label>
+        <button type="button" onclick="selectMonthEditor(5)">位置調整</button>
+      </div>
     </div>
 
-    <div class="month">
-      <div class="month-head">7月</div>
+    <div class="month" id="month_card_07">
+      <div class="month-head"><span>7月</span></div>
       <div class="thumb" id="thumb_07">未選択</div>
-      <label class="replace">差し替え<input id="replace_07" type="file" accept="image/*"></label>
+      <div class="month-actions">
+        <label>差し替え<input id="replace_07" type="file" accept="image/*"></label>
+        <button type="button" onclick="selectMonthEditor(6)">位置調整</button>
+      </div>
     </div>
 
-    <div class="month">
-      <div class="month-head">8月</div>
+    <div class="month" id="month_card_08">
+      <div class="month-head"><span>8月</span></div>
       <div class="thumb" id="thumb_08">未選択</div>
-      <label class="replace">差し替え<input id="replace_08" type="file" accept="image/*"></label>
+      <div class="month-actions">
+        <label>差し替え<input id="replace_08" type="file" accept="image/*"></label>
+        <button type="button" onclick="selectMonthEditor(7)">位置調整</button>
+      </div>
     </div>
 
-    <div class="month">
-      <div class="month-head">9月</div>
+    <div class="month" id="month_card_09">
+      <div class="month-head"><span>9月</span></div>
       <div class="thumb" id="thumb_09">未選択</div>
-      <label class="replace">差し替え<input id="replace_09" type="file" accept="image/*"></label>
+      <div class="month-actions">
+        <label>差し替え<input id="replace_09" type="file" accept="image/*"></label>
+        <button type="button" onclick="selectMonthEditor(8)">位置調整</button>
+      </div>
     </div>
 
-    <div class="month">
-      <div class="month-head">10月</div>
+    <div class="month" id="month_card_10">
+      <div class="month-head"><span>10月</span></div>
       <div class="thumb" id="thumb_10">未選択</div>
-      <label class="replace">差し替え<input id="replace_10" type="file" accept="image/*"></label>
+      <div class="month-actions">
+        <label>差し替え<input id="replace_10" type="file" accept="image/*"></label>
+        <button type="button" onclick="selectMonthEditor(9)">位置調整</button>
+      </div>
     </div>
 
-    <div class="month">
-      <div class="month-head">11月</div>
+    <div class="month" id="month_card_11">
+      <div class="month-head"><span>11月</span></div>
       <div class="thumb" id="thumb_11">未選択</div>
-      <label class="replace">差し替え<input id="replace_11" type="file" accept="image/*"></label>
+      <div class="month-actions">
+        <label>差し替え<input id="replace_11" type="file" accept="image/*"></label>
+        <button type="button" onclick="selectMonthEditor(10)">位置調整</button>
+      </div>
     </div>
 
-    <div class="month">
-      <div class="month-head">12月</div>
+    <div class="month" id="month_card_12">
+      <div class="month-head"><span>12月</span></div>
       <div class="thumb" id="thumb_12">未選択</div>
-      <label class="replace">差し替え<input id="replace_12" type="file" accept="image/*"></label>
+      <div class="month-actions">
+        <label>差し替え<input id="replace_12" type="file" accept="image/*"></label>
+        <button type="button" onclick="selectMonthEditor(11)">位置調整</button>
+      </div>
     </div>
 
   </section>
 
+  <section class="panel hidden" id="editor">
+    <h2 id="editor_month">1月の写真位置</h2>
+    <div class="editor-preview" id="editor_preview"></div>
+
+    <div class="control">
+      <div class="control-top"><span>左右</span><strong id="x_val">0</strong></div>
+      <input type="range" id="x_slider" min="-100" max="100" step="1" value="0">
+    </div>
+
+    <div class="control">
+      <div class="control-top"><span>上下</span><strong id="y_val">0</strong></div>
+      <input type="range" id="y_slider" min="-100" max="100" step="1" value="0">
+    </div>
+
+    <div class="control">
+      <div class="control-top"><span>拡大</span><strong id="zoom_val">100%</strong></div>
+      <input type="range" id="zoom_slider" min="100" max="200" step="1" value="100">
+    </div>
+
+    <button type="button" onclick="resetCurrentAdjustment()" style="width:100%;">この月の位置を初期化</button>
+    <div class="editor-note">
+      プレビューは目安です。生成画像では同じ左右・上下・拡大設定を使って写真を切り抜きます。
+    </div>
+  </section>
+
   <section class="panel">
-    <button id="make_btn" class="primary" disabled>12か月分を作成してZIP保存</button>
+    <button id="make_btn" class="primary" disabled>12か月分を作成</button>
     <progress id="progress" max="12" value="0"></progress>
     <div id="status" class="status">写真を選択してください。</div>
-    <div class="note">試作版：画像加工はブラウザ内で行います。写真を外部へ送信する処理は実装していません。</div>
+    <div class="note">
+      写真の加工はブラウザ内で行います。この試作コードには写真を外部サーバーへ送信する処理はありません。
+    </div>
+  </section>
+
+  <section class="panel hidden" id="results_panel">
+    <h2>完成したカレンダー</h2>
+    <div class="note">
+      iPhoneでは画像を長押しして「写真に保存」が使えます。「画像だけ開く」から1枚を大きく表示することもできます。
+    </div>
+    <div id="results" class="result-grid"></div>
   </section>
 </div>
 
