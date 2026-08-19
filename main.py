@@ -4,7 +4,7 @@ from io import BytesIO
 from zipfile import ZipFile, ZIP_DEFLATED
 import base64, calendar
 
-W, H = 1200, 1720
+W, H = 1200, 1780
 PHOTO_W = W - 100
 PHOTO_H = 900
 PHOTO_X = 50
@@ -17,9 +17,9 @@ def get_font(size, bold=False):
     except Exception:
         return ImageFont.load_default()
 
-FONT_TITLE = get_font(58, True)
-FONT_WEEK = get_font(34, True)
-FONT_DAY = get_font(36)
+FONT_TITLE = get_font(68, True)
+FONT_WEEK = get_font(42, True)
+FONT_DAY = get_font(36, True)
 
 # PC一括ダウンロード用：直近に生成した12か月分のJPEG bytes
 GENERATED_JPEGS = {}
@@ -91,29 +91,60 @@ def make_calendar(img, year, month, x_adj=0, y_adj=0, zoom=100, logo=None):
     left, right = 70, W - 70
     top = CAL_TOP + 92
     cw = (right-left) / 7
-    rh = 72
 
+    # 曜日見出し
+    weekday_h = 56
     for c, name in enumerate(names):
         color = (150,80,80,255) if c == 0 else ((75,100,145,255) if c == 6 else (75,75,75,255))
         b = d.textbbox((0,0), name, font=FONT_WEEK)
-        d.text((left + c*cw + (cw-(b[2]-b[0]))/2, top), name, font=FONT_WEEK, fill=color)
+        d.text(
+            (left + c*cw + (cw-(b[2]-b[0]))/2, top),
+            name, font=FONT_WEEK, fill=color
+        )
+
+    # 日別書き込み用グリッド
+    # 7列 × 6週で固定し、月によって行数が変わっても枠サイズを一定にする
+    grid_top = top + weekday_h
+    cell_h = 76
+    grid_bottom = grid_top + cell_h * 6
+    line_color = (185, 180, 172, 255)
+    line_width = 2
+
+    # 外枠＋縦線
+    for c in range(8):
+        x = int(round(left + c * cw))
+        d.line((x, grid_top, x, grid_bottom), fill=line_color, width=line_width)
+
+    # 横線
+    for r in range(7):
+        y = int(round(grid_top + r * cell_h))
+        d.line((left, y, right, y), fill=line_color, width=line_width)
 
     weeks = calendar.Calendar(firstweekday=6).monthdayscalendar(year, month)
-    for r, wk in enumerate(weeks):
+
+    # 常に6週分表示
+    while len(weeks) < 6:
+        weeks.append([0] * 7)
+
+    pad_x = 10
+    pad_y = 6
+
+    for r, wk in enumerate(weeks[:6]):
         for c, day in enumerate(wk):
             if not day:
                 continue
+
             s = str(day)
             color = (150,80,80,255) if c == 0 else ((75,100,145,255) if c == 6 else (55,55,55,255))
-            b = d.textbbox((0,0), s, font=FONT_DAY)
-            d.text(
-                (left + c*cw + (cw-(b[2]-b[0]))/2, top + 60 + r*rh),
-                s, font=FONT_DAY, fill=color
-            )
+
+            # 日付はセル左上へ。残りを手書き用スペースとして空ける
+            x = int(round(left + c * cw + pad_x))
+            y = int(round(grid_top + r * cell_h + pad_y))
+            d.text((x, y), s, font=FONT_DAY, fill=color)
 
     if logo:
         # 日付領域から離して、最下部中央に小さく配置
-        lw = 78
+        lw = 112
         lh = int(logo.height * lw / logo.width)
         lg = logo.resize((lw, lh), Image.Resampling.LANCZOS)
         logo_x = (W - lw) // 2
