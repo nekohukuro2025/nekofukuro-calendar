@@ -13,16 +13,80 @@ CAL_TOP = 995
 
 def get_font(size, bold=False):
     try:
-        return ImageFont.truetype("DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf", size)
+        return ImageFont.truetype(
+            "DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf",
+            size
+        )
     except Exception:
-        return ImageFont.load_default()
+        try:
+            return ImageFont.load_default(size=size)
+        except TypeError:
+            return ImageFont.load_default()
 
-FONT_TITLE = get_font(88, True)
-FONT_WEEK = get_font(56, True)
-FONT_DAY = get_font(54, True)
+FONT_TITLE = get_font(62, True)
+FONT_WEEK = get_font(34, True)
+FONT_DAY = get_font(38, True)
 
 # PC一括ダウンロード用：直近に生成した12か月分のJPEG bytes
 GENERATED_JPEGS = {}
+
+
+def nth_weekday(year, month, weekday, nth):
+    first = calendar.monthrange(year, month)[0]
+    return 1 + ((weekday - first) % 7) + (nth - 1) * 7
+
+def vernal_equinox_day(year):
+    return int(20.8431 + 0.242194 * (year - 1980) - ((year - 1980) // 4))
+
+def autumn_equinox_day(year):
+    return int(23.2488 + 0.242194 * (year - 1980) - ((year - 1980) // 4))
+
+def japanese_holidays(year):
+    import datetime
+
+    holidays = {
+        (1, 1): "New Year's Day",
+        (1, nth_weekday(year, 1, 0, 2)): "Coming of Age Day",
+        (2, 11): "National Foundation Day",
+        (2, 23): "Emperor's Birthday",
+        (3, vernal_equinox_day(year)): "Vernal Equinox Day",
+        (4, 29): "Showa Day",
+        (5, 3): "Constitution Memorial Day",
+        (5, 4): "Greenery Day",
+        (5, 5): "Children's Day",
+        (7, nth_weekday(year, 7, 0, 3)): "Marine Day",
+        (8, 11): "Mountain Day",
+        (9, nth_weekday(year, 9, 0, 3)): "Respect for the Aged Day",
+        (9, autumn_equinox_day(year)): "Autumnal Equinox Day",
+        (10, nth_weekday(year, 10, 0, 2)): "Sports Day",
+        (11, 3): "Culture Day",
+        (11, 23): "Labor Thanksgiving Day",
+    }
+
+    changed = True
+    while changed:
+        changed = False
+        for month in range(1, 13):
+            dim = calendar.monthrange(year, month)[1]
+            for day in range(2, dim):
+                key = (month, day)
+                if key in holidays:
+                    continue
+                if (month, day - 1) in holidays and (month, day + 1) in holidays:
+                    holidays[key] = "Citizen's Holiday"
+                    changed = True
+
+    original = list(holidays.keys())
+    for month, day in original:
+        dt = datetime.date(year, month, day)
+        if dt.weekday() == 6:
+            sub = dt + datetime.timedelta(days=1)
+            while (sub.month, sub.day) in holidays:
+                sub += datetime.timedelta(days=1)
+            holidays[(sub.month, sub.day)] = "Substitute Holiday"
+
+    return holidays
+
 
 async def js_file_to_image(file_obj):
     data_url = str(await window.readFileDataURL(file_obj))
@@ -124,6 +188,8 @@ def make_calendar(img, year, month, x_adj=0, y_adj=0, zoom=100, logo=None):
 
     pad_x = 10
     pad_y = 7
+    holiday_map = japanese_holidays(year)
+
     for r, wk in enumerate(weeks):
         for c, day in enumerate(wk):
             if not day:
