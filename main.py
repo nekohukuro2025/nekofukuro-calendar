@@ -17,9 +17,9 @@ def get_font(size, bold=False):
     except Exception:
         return ImageFont.load_default()
 
-FONT_TITLE = get_font(76, True)
-FONT_WEEK = get_font(48, True)
-FONT_DAY = get_font(44, True)
+FONT_TITLE = get_font(88, True)
+FONT_WEEK = get_font(56, True)
+FONT_DAY = get_font(54, True)
 
 # PC一括ダウンロード用：直近に生成した12か月分のJPEG bytes
 GENERATED_JPEGS = {}
@@ -56,7 +56,7 @@ def crop_with_adjustment(img, target_w, target_h, x_adj=0, y_adj=0, zoom=100):
     base_x = (target_w - nw) / 2
     base_y = (target_h - nh) / 2
     shift_x = (x_adj / 200.0) * (target_w * 0.50)
-    shift_y = (y_adj / 200.0) * (target_h * 0.50)
+    shift_y = -(y_adj / 200.0) * (target_h * 0.50)
 
     paste_x = int(round(base_x + shift_x))
     paste_y = int(round(base_y + shift_y))
@@ -95,7 +95,7 @@ def make_calendar(img, year, month, x_adj=0, y_adj=0, zoom=100, logo=None):
     # 曜日見出し
     weekday_h = 56
     for c, name in enumerate(names):
-        color = (150,80,80,255) if c == 0 else ((75,100,145,255) if c == 6 else (75,75,75,255))
+        color = (185,45,45,255) if c == 0 else ((45,80,165,255) if c == 6 else (30,30,30,255))
         b = d.textbbox((0,0), name, font=FONT_WEEK)
         d.text(
             (left + c*cw + (cw-(b[2]-b[0]))/2, top),
@@ -111,8 +111,8 @@ def make_calendar(img, year, month, x_adj=0, y_adj=0, zoom=100, logo=None):
     available_grid_h = 456
     cell_h = available_grid_h / week_count
     grid_bottom = grid_top + cell_h * week_count
-    line_color = (175, 170, 162, 255)
-    line_width = 2
+    line_color = (125, 120, 112, 255)
+    line_width = 3
 
     for c in range(8):
         x = int(round(left + c * cw))
@@ -129,7 +129,7 @@ def make_calendar(img, year, month, x_adj=0, y_adj=0, zoom=100, logo=None):
             if not day:
                 continue
             s = str(day)
-            color = (150,80,80,255) if c == 0 else ((75,100,145,255) if c == 6 else (55,55,55,255))
+            color = (185,45,45,255) if c == 0 else ((45,80,165,255) if c == 6 else (20,20,20,255))
             x = int(round(left + c * cw + pad_x))
             y = int(round(grid_top + r * cell_h + pad_y))
             d.text((x, y), s, font=FONT_DAY, fill=color)

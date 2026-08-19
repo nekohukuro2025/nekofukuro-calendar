@@ -237,7 +237,7 @@ function updateEditorPreview() {
     const baseY = (targetH - nh) / 2;
 
     const shiftX = (adj.x / 200.0) * (targetW * 0.50);
-    const shiftY = (adj.y / 200.0) * (targetH * 0.50);
+    const shiftY = -(adj.y / 200.0) * (targetH * 0.50);
 
     const pasteX = Math.round(baseX + shiftX);
     const pasteY = Math.round(baseY + shiftY);
