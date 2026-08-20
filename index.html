@@ -32,11 +32,12 @@ h2 { font-size:20px; margin:0 0 10px; }
 }
 .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
 
-select, button, .filelike {
+select, button, input[type="text"], .filelike {
   min-height:44px; border:1px solid #cec7bf; border-radius:10px;
   background:#fff; font-size:16px;
 }
 select { padding:8px 11px; }
+input[type="text"] { padding:8px 11px; min-width:190px; flex:1; }
 .filelike, button {
   display:flex; align-items:center; justify-content:center;
   padding:10px 13px; font-weight:700;
@@ -148,7 +149,15 @@ window.renderCalendarLabel = async (text, width, height, fontPx, color) => {
   const ctx = canvas.getContext("2d");
   ctx.clearRect(0, 0, width, height);
 
-  ctx.font = `700 ${fontPx}px -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif`;
+  const family = '-apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif';
+  let px = fontPx;
+  ctx.font = `700 ${px}px ${family}`;
+
+  while (px > 10 && ctx.measureText(text).width > width - 6) {
+    px -= 1;
+    ctx.font = `700 ${px}px ${family}`;
+  }
+
   ctx.fillStyle = color;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -296,6 +305,42 @@ function confirmAndNextMonth() {
 }
 
 
+
+function updateAnniversaryDays() {
+  const monthEl = document.getElementById("anniv_month");
+  const dayEl = document.getElementById("anniv_day");
+  const textEl = document.getElementById("anniv_text");
+  if (!monthEl || !dayEl || !textEl) return;
+
+  const month = Number(monthEl.value);
+  const year = Number(document.getElementById("year").value);
+  const oldDay = Number(dayEl.value);
+
+  dayEl.innerHTML = '<option value="">日</option>';
+
+  if (!month) {
+    dayEl.disabled = true;
+    textEl.disabled = true;
+    textEl.value = "";
+    return;
+  }
+
+  const maxDay = new Date(year, month, 0).getDate();
+  for (let d = 1; d <= maxDay; d++) {
+    const opt = document.createElement("option");
+    opt.value = String(d);
+    opt.textContent = `${d}日`;
+    dayEl.appendChild(opt);
+  }
+
+  dayEl.disabled = false;
+  textEl.disabled = false;
+
+  if (oldDay >= 1 && oldDay <= maxDay) {
+    dayEl.value = String(oldDay);
+  }
+}
+
 function clearResults() {
   const r = document.getElementById("results");
   r.innerHTML = "";
@@ -342,6 +387,19 @@ document.addEventListener("DOMContentLoaded", () => {
     window.photoAdjustments[window.activeMonth].zoom = Number(e.target.value);
     updateEditorPreview();
   });
+
+  document.getElementById("anniv_month").addEventListener("change", () => {
+    clearResults();
+    updateAnniversaryDays();
+  });
+  document.getElementById("anniv_day").addEventListener("change", clearResults);
+  document.getElementById("anniv_text").addEventListener("input", clearResults);
+  document.getElementById("year").addEventListener("change", () => {
+    clearResults();
+    updateAnniversaryDays();
+  });
+
+  updateAnniversaryDays();
 });
 </script>
 </head>
@@ -509,6 +567,30 @@ document.addEventListener("DOMContentLoaded", () => {
     </div>
     <div class="editor-note">
       プレビューと完成画像は同じ位置計算を使用します。縮小時や大きく移動した場合は余白が見えることがあります。調整後は「この位置で確定 → 次へ」で次の月へ進めます。
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>うちのこ記念日 <span style="font-size:14px;color:#777;font-weight:500;">（任意・1日だけ）</span></h2>
+    <div class="row">
+      <select id="anniv_month" aria-label="記念日の月">
+        <option value="">設定しない</option>
+        <option value="1">1月</option><option value="2">2月</option>
+        <option value="3">3月</option><option value="4">4月</option>
+        <option value="5">5月</option><option value="6">6月</option>
+        <option value="7">7月</option><option value="8">8月</option>
+        <option value="9">9月</option><option value="10">10月</option>
+        <option value="11">11月</option><option value="12">12月</option>
+      </select>
+      <select id="anniv_day" aria-label="記念日の日" disabled>
+        <option value="">日</option>
+      </select>
+      <input id="anniv_text" type="text" maxlength="18"
+             placeholder="例：ミュー誕生日" aria-label="記念日の内容" disabled>
+    </div>
+    <div class="note">
+      1日だけ設定できます。指定した日付欄にハートマークと記念日の内容を表示します。<br>
+      例：ミュー誕生日／たまちゃんお迎え日
     </div>
   </section>
 

@@ -211,7 +211,7 @@ def center_text(draw, y, text, font, fill):
     b = draw.textbbox((0, 0), text, font=font)
     draw.text(((W - (b[2]-b[0])) / 2, y), text, font=font, fill=fill)
 
-def make_calendar(img, year, month, x_adj=0, y_adj=0, zoom=100, logo=None, cat_icon=None, cat_labels=None, holiday_labels=None):
+def make_calendar(img, year, month, x_adj=0, y_adj=0, zoom=100, logo=None, cat_icon=None, cat_labels=None, holiday_labels=None, anniversary=None, anniversary_label=None, anniversary_heart=None):
     canvas = Image.new("RGBA", (W, H), (250, 248, 244, 255))
     d = ImageDraw.Draw(canvas)
 
@@ -316,6 +316,21 @@ def make_calendar(img, year, month, x_adj=0, y_adj=0, zoom=100, logo=None, cat_i
                         ly = cell_bottom - label_img.height - 4
                         canvas.alpha_composite(label_img, (lx, ly))
 
+            # うちのこ記念日（ユーザー指定・1日だけ）
+            if anniversary and (month, day) == (anniversary["month"], anniversary["day"]):
+                if anniversary_heart is not None:
+                    # ハートは右上。日付数字は左上なので干渉しにくい。
+                    hx = cell_right - anniversary_heart.width - 7
+                    hy = cell_top + 5
+                    canvas.alpha_composite(anniversary_heart, (hx, hy))
+
+                if anniversary_label is not None:
+                    # 猫記念日と重なる日は2段にして両方表示
+                    extra = anniversary_label.height + 4 if cat_event else 0
+                    ax = cell_left + ((cell_right - cell_left) - anniversary_label.width) // 2
+                    ay = cell_bottom - anniversary_label.height - 4 - extra
+                    canvas.alpha_composite(anniversary_label, (ax, ay))
+
     if logo:
         # 日付領域から離して、最下部中央に小さく配置
         lw = 112
@@ -403,6 +418,35 @@ async def make_all(event):
     btn = document.getElementById("make_btn")
 
     year = int(document.getElementById("year").value)
+
+    # 任意の「うちのこ記念日」
+    anniv_month_raw = str(document.getElementById("anniv_month").value).strip()
+    anniv_day_raw = str(document.getElementById("anniv_day").value).strip()
+    anniv_text = str(document.getElementById("anniv_text").value).strip()
+
+    anniversary = None
+    if anniv_month_raw:
+        if not anniv_day_raw:
+            status.innerText = "うちのこ記念日の日付を選んでください。"
+            return
+        if not anniv_text:
+            status.innerText = "うちのこ記念日の内容を入力してください。"
+            return
+
+        anniv_month = int(anniv_month_raw)
+        anniv_day = int(anniv_day_raw)
+        max_day = calendar.monthrange(year, anniv_month)[1]
+
+        if not (1 <= anniv_day <= max_day):
+            status.innerText = "うちのこ記念日の日付が正しくありません。"
+            return
+
+        anniversary = {
+            "month": anniv_month,
+            "day": anniv_day,
+            "text": anniv_text[:18],
+        }
+
     photos = window.selectedPhotos
     adjustments = window.photoAdjustments
 
@@ -437,6 +481,16 @@ async def make_all(event):
             label, 138, 22, 15, "#b92d2d"
         )
 
+    anniversary_label = None
+    anniversary_heart = None
+    if anniversary:
+        anniversary_label = await render_browser_label(
+            anniversary["text"], 142, 24, 16, "#b64f68"
+        )
+        anniversary_heart = await render_browser_label(
+            "♥", 38, 38, 32, "#d85f7b"
+        )
+
     try:
         for month in range(1, 13):
             status.innerText = f"{month}月を作成中… ({month}/12)"
@@ -456,7 +510,10 @@ async def make_all(event):
                 logo=logo,
                 cat_icon=cat_icon,
                 cat_labels=cat_labels,
-                holiday_labels=holiday_labels
+                holiday_labels=holiday_labels,
+                anniversary=anniversary,
+                anniversary_label=anniversary_label,
+                anniversary_heart=anniversary_heart
             )
 
             jpeg_bytes = image_to_jpeg_bytes(result)
