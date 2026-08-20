@@ -26,9 +26,39 @@ def get_font(size, bold=False):
 FONT_TITLE = get_font(62, True)
 FONT_WEEK = get_font(34, True)
 FONT_DAY = get_font(38, True)
+FONT_EVENT = get_font(18, True)
 
 # PC一括ダウンロード用：直近に生成した12か月分のJPEG bytes
 GENERATED_JPEGS = {}
+
+
+CAT_DAYS = {
+    (2, 17): "ヨーロッパの猫の日",
+    (2, 22): "猫の日",
+    (3, 1): "ロシアの猫の日",
+    (8, 8): "世界猫の日",
+    (8, 17): "黒猫感謝の日",
+    (9, 29): "招き猫の日",
+    (10, 27): "全国黒猫の日",
+    (10, 29): "アメリカの猫の日",
+    (11, 17): "イタリアの黒猫の日",
+}
+
+
+
+OFFICIAL_HOLIDAYS = {
+    2026: {
+        (1,1),(1,12),(2,11),(2,23),(3,20),(4,29),
+        (5,3),(5,4),(5,5),(5,6),(7,20),(8,11),
+        (9,21),(9,22),(9,23),(10,12),(11,3),(11,23)
+    },
+    2027: {
+        (1,1),(1,11),(2,11),(2,23),(3,21),(3,22),(4,29),
+        (5,3),(5,4),(5,5),(7,19),(8,11),(9,20),(9,23),
+        (10,11),(11,3),(11,23)
+    },
+}
+
 
 
 def nth_weekday(year, month, weekday, nth):
@@ -85,6 +115,9 @@ def japanese_holidays(year):
                 sub += datetime.timedelta(days=1)
             holidays[(sub.month, sub.day)] = "Substitute Holiday"
 
+    # 内閣府が公表済みの年は公式日付を最終的に優先する。
+    if year in OFFICIAL_HOLIDAYS:
+        return {key: "Holiday" for key in OFFICIAL_HOLIDAYS[year]}
     return holidays
 
 
@@ -142,7 +175,7 @@ def center_text(draw, y, text, font, fill):
     b = draw.textbbox((0, 0), text, font=font)
     draw.text(((W - (b[2]-b[0])) / 2, y), text, font=font, fill=fill)
 
-def make_calendar(img, year, month, x_adj=0, y_adj=0, zoom=100, logo=None):
+def make_calendar(img, year, month, x_adj=0, y_adj=0, zoom=100, logo=None, cat_icon=None):
     canvas = Image.new("RGBA", (W, H), (250, 248, 244, 255))
     d = ImageDraw.Draw(canvas)
 
@@ -200,6 +233,36 @@ def make_calendar(img, year, month, x_adj=0, y_adj=0, zoom=100, logo=None):
             y = int(round(grid_top + r * cell_h + pad_y))
             d.text((x, y), s, font=FONT_DAY, fill=color)
 
+            cat_event = CAT_DAYS.get((month, day))
+            if cat_event:
+                cell_left = int(round(left + c * cw))
+                cell_top = int(round(grid_top + r * cell_h))
+                cell_right = int(round(left + (c + 1) * cw))
+                cell_bottom = int(round(grid_top + (r + 1) * cell_h))
+
+                if cat_icon is not None:
+                    icon_w = int(cw * 0.42)
+                    icon_h = int(cat_icon.height * icon_w / cat_icon.width)
+                    max_h = int(cell_h * 0.50)
+                    if icon_h > max_h:
+                        icon_h = max_h
+                        icon_w = int(cat_icon.width * icon_h / cat_icon.height)
+
+                    icon = cat_icon.resize((icon_w, icon_h), Image.Resampling.LANCZOS)
+                    alpha = icon.getchannel("A").point(lambda v: int(v * 0.14))
+                    ghost = Image.new("RGBA", icon.size, (90, 90, 90, 0))
+                    ghost.putalpha(alpha)
+
+                    ix = cell_left + (cell_right - cell_left - icon_w) // 2
+                    iy = cell_top + (cell_bottom - cell_top - icon_h) // 2 + 2
+                    canvas.alpha_composite(ghost, (ix, iy))
+
+                tb = d.textbbox((0, 0), cat_event, font=FONT_EVENT)
+                tw = tb[2] - tb[0]
+                tx = cell_left + max(5, ((cell_right - cell_left) - tw) // 2)
+                ty = cell_bottom - 23
+                d.text((tx, ty), cat_event, font=FONT_EVENT, fill=(90, 90, 90, 255))
+
     if logo:
         # 日付領域から離して、最下部中央に小さく配置
         lw = 112
@@ -210,6 +273,17 @@ def make_calendar(img, year, month, x_adj=0, y_adj=0, zoom=100, logo=None):
         canvas.alpha_composite(lg, (logo_x, logo_y))
 
     return canvas.convert("RGB")
+
+
+async def load_cat_day_icon():
+    try:
+        r = await window.fetch("./cat_day.png")
+        ab = await r.arrayBuffer()
+        arr = window.Uint8Array.new(ab)
+        raw = bytes(arr.to_py())
+        return Image.open(BytesIO(raw)).convert("RGBA")
+    except Exception:
+        return None
 
 async def load_logo():
     try:
@@ -286,6 +360,7 @@ async def make_all(event):
     GENERATED_JPEGS.clear()
 
     logo = await load_logo()
+    cat_icon = await load_cat_day_icon()
 
     try:
         for month in range(1, 13):
@@ -303,7 +378,8 @@ async def make_all(event):
                 x_adj=float(adj.x),
                 y_adj=float(adj.y),
                 zoom=float(adj.zoom),
-                logo=logo
+                logo=logo,
+                cat_icon=cat_icon
             )
 
             jpeg_bytes = image_to_jpeg_bytes(result)
