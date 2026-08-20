@@ -34,7 +34,7 @@ GENERATED_JPEGS = {}
 
 CAT_DAYS = {
     (2, 17): "ヨーロッパの猫の日",
-    (2, 22): "猫の日",
+    (2, 22): "日本の猫の日",
     (3, 1): "ロシアの猫の日",
     (8, 8): "世界猫の日",
     (8, 17): "黒猫感謝の日",
@@ -48,14 +48,43 @@ CAT_DAYS = {
 
 OFFICIAL_HOLIDAYS = {
     2026: {
-        (1,1),(1,12),(2,11),(2,23),(3,20),(4,29),
-        (5,3),(5,4),(5,5),(5,6),(7,20),(8,11),
-        (9,21),(9,22),(9,23),(10,12),(11,3),(11,23)
+        (1, 1): "元日",
+        (1, 12): "成人の日",
+        (2, 11): "建国記念の日",
+        (2, 23): "天皇誕生日",
+        (3, 20): "春分の日",
+        (4, 29): "昭和の日",
+        (5, 3): "憲法記念日",
+        (5, 4): "みどりの日",
+        (5, 5): "こどもの日",
+        (5, 6): "振替休日",
+        (7, 20): "海の日",
+        (8, 11): "山の日",
+        (9, 21): "敬老の日",
+        (9, 22): "国民の休日",
+        (9, 23): "秋分の日",
+        (10, 12): "スポーツの日",
+        (11, 3): "文化の日",
+        (11, 23): "勤労感謝の日",
     },
     2027: {
-        (1,1),(1,11),(2,11),(2,23),(3,21),(3,22),(4,29),
-        (5,3),(5,4),(5,5),(7,19),(8,11),(9,20),(9,23),
-        (10,11),(11,3),(11,23)
+        (1, 1): "元日",
+        (1, 11): "成人の日",
+        (2, 11): "建国記念の日",
+        (2, 23): "天皇誕生日",
+        (3, 21): "春分の日",
+        (3, 22): "振替休日",
+        (4, 29): "昭和の日",
+        (5, 3): "憲法記念日",
+        (5, 4): "みどりの日",
+        (5, 5): "こどもの日",
+        (7, 19): "海の日",
+        (8, 11): "山の日",
+        (9, 20): "敬老の日",
+        (9, 23): "秋分の日",
+        (10, 11): "スポーツの日",
+        (11, 3): "文化の日",
+        (11, 23): "勤労感謝の日",
     },
 }
 
@@ -72,52 +101,59 @@ def autumn_equinox_day(year):
     return int(23.2488 + 0.242194 * (year - 1980) - ((year - 1980) // 4))
 
 def japanese_holidays(year):
+    """
+    {(month, day): 日本語祝日名} を返す。
+    2026/2027は公表済み固定データ。
+    それ以外は現行ルールから計算。
+    """
     import datetime
 
+    if year in OFFICIAL_HOLIDAYS:
+        return dict(OFFICIAL_HOLIDAYS[year])
+
     holidays = {
-        (1, 1): "New Year's Day",
-        (1, nth_weekday(year, 1, 0, 2)): "Coming of Age Day",
-        (2, 11): "National Foundation Day",
-        (2, 23): "Emperor's Birthday",
-        (3, vernal_equinox_day(year)): "Vernal Equinox Day",
-        (4, 29): "Showa Day",
-        (5, 3): "Constitution Memorial Day",
-        (5, 4): "Greenery Day",
-        (5, 5): "Children's Day",
-        (7, nth_weekday(year, 7, 0, 3)): "Marine Day",
-        (8, 11): "Mountain Day",
-        (9, nth_weekday(year, 9, 0, 3)): "Respect for the Aged Day",
-        (9, autumn_equinox_day(year)): "Autumnal Equinox Day",
-        (10, nth_weekday(year, 10, 0, 2)): "Sports Day",
-        (11, 3): "Culture Day",
-        (11, 23): "Labor Thanksgiving Day",
+        (1, 1): "元日",
+        (1, nth_weekday(year, 1, 0, 2)): "成人の日",
+        (2, 11): "建国記念の日",
+        (2, 23): "天皇誕生日",
+        (3, vernal_equinox_day(year)): "春分の日",
+        (4, 29): "昭和の日",
+        (5, 3): "憲法記念日",
+        (5, 4): "みどりの日",
+        (5, 5): "こどもの日",
+        (7, nth_weekday(year, 7, 0, 3)): "海の日",
+        (8, 11): "山の日",
+        (9, nth_weekday(year, 9, 0, 3)): "敬老の日",
+        (9, autumn_equinox_day(year)): "秋分の日",
+        (10, nth_weekday(year, 10, 0, 2)): "スポーツの日",
+        (11, 3): "文化の日",
+        (11, 23): "勤労感謝の日",
     }
 
+    # 国民の休日
     changed = True
     while changed:
         changed = False
-        for month in range(1, 13):
-            dim = calendar.monthrange(year, month)[1]
+        for m in range(1, 13):
+            dim = calendar.monthrange(year, m)[1]
             for day in range(2, dim):
-                key = (month, day)
+                key = (m, day)
                 if key in holidays:
                     continue
-                if (month, day - 1) in holidays and (month, day + 1) in holidays:
-                    holidays[key] = "Citizen's Holiday"
+                if (m, day - 1) in holidays and (m, day + 1) in holidays:
+                    holidays[key] = "国民の休日"
                     changed = True
 
+    # 振替休日
     original = list(holidays.keys())
-    for month, day in original:
-        dt = datetime.date(year, month, day)
+    for m, day in original:
+        dt = datetime.date(year, m, day)
         if dt.weekday() == 6:
             sub = dt + datetime.timedelta(days=1)
             while (sub.month, sub.day) in holidays:
                 sub += datetime.timedelta(days=1)
-            holidays[(sub.month, sub.day)] = "Substitute Holiday"
+            holidays[(sub.month, sub.day)] = "振替休日"
 
-    # 内閣府が公表済みの年は公式日付を最終的に優先する。
-    if year in OFFICIAL_HOLIDAYS:
-        return {key: "Holiday" for key in OFFICIAL_HOLIDAYS[year]}
     return holidays
 
 
@@ -175,7 +211,7 @@ def center_text(draw, y, text, font, fill):
     b = draw.textbbox((0, 0), text, font=font)
     draw.text(((W - (b[2]-b[0])) / 2, y), text, font=font, fill=fill)
 
-def make_calendar(img, year, month, x_adj=0, y_adj=0, zoom=100, logo=None, cat_icon=None):
+def make_calendar(img, year, month, x_adj=0, y_adj=0, zoom=100, logo=None, cat_icon=None, cat_labels=None, holiday_labels=None):
     canvas = Image.new("RGBA", (W, H), (250, 248, 244, 255))
     d = ImageDraw.Draw(canvas)
 
@@ -228,18 +264,34 @@ def make_calendar(img, year, month, x_adj=0, y_adj=0, zoom=100, logo=None, cat_i
             if not day:
                 continue
             s = str(day)
-            color = (185,45,45,255) if c == 0 else ((45,80,165,255) if c == 6 else (20,20,20,255))
+            is_holiday = (month, day) in holiday_map
+            if c == 0 or is_holiday:
+                color = (185,45,45,255)
+            elif c == 6:
+                color = (45,80,165,255)
+            else:
+                color = (20,20,20,255)
+
             x = int(round(left + c * cw + pad_x))
             y = int(round(grid_top + r * cell_h + pad_y))
             d.text((x, y), s, font=FONT_DAY, fill=color)
 
+            cell_left = int(round(left + c * cw))
+            cell_top = int(round(grid_top + r * cell_h))
+            cell_right = int(round(left + (c + 1) * cw))
+            cell_bottom = int(round(grid_top + (r + 1) * cell_h))
+
+            # 祝日名
+            holiday_name = holiday_map.get((month, day))
+            if holiday_name and holiday_labels:
+                label_img = holiday_labels.get(holiday_name)
+                if label_img is not None:
+                    lx = cell_left + 6
+                    ly = cell_top + 46
+                    canvas.alpha_composite(label_img, (lx, ly))
+
             cat_event = CAT_DAYS.get((month, day))
             if cat_event:
-                cell_left = int(round(left + c * cw))
-                cell_top = int(round(grid_top + r * cell_h))
-                cell_right = int(round(left + (c + 1) * cw))
-                cell_bottom = int(round(grid_top + (r + 1) * cell_h))
-
                 if cat_icon is not None:
                     icon_w = int(cw * 0.42)
                     icon_h = int(cat_icon.height * icon_w / cat_icon.width)
@@ -257,11 +309,12 @@ def make_calendar(img, year, month, x_adj=0, y_adj=0, zoom=100, logo=None, cat_i
                     iy = cell_top + (cell_bottom - cell_top - icon_h) // 2 + 2
                     canvas.alpha_composite(ghost, (ix, iy))
 
-                tb = d.textbbox((0, 0), cat_event, font=FONT_EVENT)
-                tw = tb[2] - tb[0]
-                tx = cell_left + max(5, ((cell_right - cell_left) - tw) // 2)
-                ty = cell_bottom - 23
-                d.text((tx, ty), cat_event, font=FONT_EVENT, fill=(90, 90, 90, 255))
+                if cat_labels:
+                    label_img = cat_labels.get(cat_event)
+                    if label_img is not None:
+                        lx = cell_left + ((cell_right - cell_left) - label_img.width) // 2
+                        ly = cell_bottom - label_img.height - 4
+                        canvas.alpha_composite(label_img, (lx, ly))
 
     if logo:
         # 日付領域から離して、最下部中央に小さく配置
@@ -274,6 +327,14 @@ def make_calendar(img, year, month, x_adj=0, y_adj=0, zoom=100, logo=None, cat_i
 
     return canvas.convert("RGB")
 
+
+
+async def render_browser_label(text, width, height, font_px, color):
+    data_url = await window.renderCalendarLabel(
+        text, width, height, font_px, color
+    )
+    raw = base64.b64decode(str(data_url).split(",", 1)[1])
+    return Image.open(BytesIO(raw)).convert("RGBA")
 
 async def load_cat_day_icon():
     try:
@@ -362,6 +423,20 @@ async def make_all(event):
     logo = await load_logo()
     cat_icon = await load_cat_day_icon()
 
+    # 日本語ラベルはブラウザの日本語フォントで描画してPNG化
+    cat_labels = {}
+    for label in set(CAT_DAYS.values()):
+        cat_labels[label] = await render_browser_label(
+            label, 142, 24, 16, "#555555"
+        )
+
+    holiday_map_for_year = japanese_holidays(year)
+    holiday_labels = {}
+    for label in set(holiday_map_for_year.values()):
+        holiday_labels[label] = await render_browser_label(
+            label, 138, 22, 15, "#b92d2d"
+        )
+
     try:
         for month in range(1, 13):
             status.innerText = f"{month}月を作成中… ({month}/12)"
@@ -379,7 +454,9 @@ async def make_all(event):
                 y_adj=float(adj.y),
                 zoom=float(adj.zoom),
                 logo=logo,
-                cat_icon=cat_icon
+                cat_icon=cat_icon,
+                cat_labels=cat_labels,
+                holiday_labels=holiday_labels
             )
 
             jpeg_bytes = image_to_jpeg_bytes(result)

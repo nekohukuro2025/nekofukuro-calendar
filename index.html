@@ -140,6 +140,24 @@ window.readFileDataURL = (file) => new Promise((resolve, reject) => {
 
 window.pauseFrame = () => new Promise(resolve => setTimeout(resolve, 0));
 
+window.renderCalendarLabel = async (text, width, height, fontPx, color) => {
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, width, height);
+
+  ctx.font = `700 ${fontPx}px -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif`;
+  ctx.fillStyle = color;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, width / 2, height / 2);
+
+  return canvas.toDataURL("image/png");
+};
+
+
 window.isDesktopLike = () => {
   const ua = navigator.userAgent || "";
   const isMobileUA = /iPhone|iPad|iPod|Android/i.test(ua);
